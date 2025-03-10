@@ -1,8 +1,15 @@
+'use client';
+
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 interface Payment {
   amount: number;
   created_at: string;
+}
+
+interface MonthlyData {
+  month: string;
+  amount: number;
 }
 
 interface EarningsChartProps {
@@ -11,7 +18,7 @@ interface EarningsChartProps {
 
 export function EarningsChart({ data }: EarningsChartProps) {
   // Process data to group by month
-  const monthlyData = data.reduce((acc: any[], payment) => {
+  const monthlyData = data.reduce((acc: MonthlyData[], payment) => {
     const date = new Date(payment.created_at);
     const monthYear = `${date.getMonth() + 1}/${date.getFullYear()}`;
     
