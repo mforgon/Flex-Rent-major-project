@@ -1,116 +1,96 @@
-'use client';
-
-import { useState } from 'react';
-import { useAuth } from '@/lib/auth-context';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function SignUp() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [role, setRole] = useState<'owner' | 'tenant'>('tenant');
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const { signUp } = useAuth();
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    try {
-      await signUp(email, password, fullName, role);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred during sign up');
-    } finally {
-      setLoading(false);
-    }
+export default async function SignUpPage() {
+  const supabase = createServerComponentClient({ cookies });
+  
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session) {
+    redirect(session.user.user_metadata.role === 'owner' ? '/dashboard/owner' : '/dashboard/tenant');
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Create an Account</CardTitle>
-          <CardDescription>Enter your details to create your account</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <label htmlFor="fullName" className="text-sm font-medium">
-                Full Name
-              </label>
-              <Input
-                id="fullName"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required
-                placeholder="Enter your full name"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium">
-                Email
-              </label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="Enter your email"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                placeholder="Create a password"
-              />
-            </div>
-            <div className="space-y-2">
-              <label htmlFor="role" className="text-sm font-medium">
-                I want to
-              </label>
-              <Select value={role} onValueChange={(value: 'owner' | 'tenant') => setRole(value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your role" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tenant">Rent a Property</SelectItem>
-                  <SelectItem value="owner">List My Property</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {error && (
-              <div className="text-sm text-red-500">
-                {error}
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-md mx-auto">
+        <Card>
+          <CardHeader>
+            <CardTitle>Sign Up</CardTitle>
+            <CardDescription>
+              Create your account to get started
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form action="/auth/sign-up" method="post" className="space-y-4">
+              <div>
+                <label htmlFor="full_name" className="block text-sm font-medium mb-1">
+                  Full Name
+                </label>
+                <input
+                  type="text"
+                  id="full_name"
+                  name="full_name"
+                  required
+                  className="w-full px-3 py-2 border rounded-md"
+                />
               </div>
-            )}
-            <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? 'Creating account...' : 'Create Account'}
-            </Button>
-            <div className="text-sm text-center">
-              <p>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  id="email"
+                  name="email"
+                  required
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium mb-1">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  id="password"
+                  name="password"
+                  required
+                  className="w-full px-3 py-2 border rounded-md"
+                />
+              </div>
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium mb-1">
+                  Role
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  required
+                  className="w-full px-3 py-2 border rounded-md"
+                >
+                  <option value="tenant">Tenant</option>
+                  <option value="owner">Property Owner</option>
+                </select>
+              </div>
+              <Button type="submit" className="w-full">
+                Sign Up
+              </Button>
+            </form>
+            <div className="mt-4 text-center text-sm">
+              <p className="text-muted-foreground">
                 Already have an account?{' '}
-                <Link href="/sign-in" className="text-blue-600 hover:underline">
+                <Link href="/sign-in" className="text-primary hover:underline">
                   Sign in
                 </Link>
               </p>
             </div>
-          </form>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 } 

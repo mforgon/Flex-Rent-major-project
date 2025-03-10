@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { PropertyList } from "@/components/properties/property-list";
+import { Building2, Calendar, CreditCard, Shield } from 'lucide-react';
 
 export default async function HomePage() {
   const supabase = createServerComponentClient({ cookies });
@@ -18,23 +19,21 @@ export default async function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-background to-muted py-20">
-        <div className="container">
-          <div className="flex flex-col items-center text-center gap-8">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight">
-              Find Your Perfect <br />
-              Rental Space
+      <section className="bg-gradient-to-r from-primary/10 to-primary/5 py-20">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-bold mb-6">
+              Find Your Perfect Rental Property
             </h1>
-            <p className="text-lg text-muted-foreground max-w-[600px]">
-              Discover flexible rental options with daily, weekly, and monthly rates.
-              Book your ideal space today with our modern rental platform.
+            <p className="text-xl text-muted-foreground mb-8">
+              A modern platform for property owners and tenants to connect, manage bookings, and handle payments seamlessly.
             </p>
-            <div className="flex gap-4">
-              <Link href="/properties">
-                <Button size="lg">Browse Properties</Button>
-              </Link>
+            <div className="flex gap-4 justify-center">
               <Link href="/sign-up">
-                <Button variant="outline" size="lg">List Your Property</Button>
+                <Button size="lg">Get Started</Button>
+              </Link>
+              <Link href="/properties">
+                <Button variant="outline" size="lg">Browse Properties</Button>
               </Link>
             </div>
           </div>
@@ -63,70 +62,44 @@ export default async function HomePage() {
       </section>
 
       {/* Features Section */}
-      <section className="py-20 bg-muted">
-        <div className="container">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="flex flex-col gap-4 items-center text-center p-6">
-              <div className="bg-primary/10 p-3 rounded-full">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+      <section className="py-20">
+        <div className="container mx-auto px-4">
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Flex Rent?</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Building2 className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">Flexible Duration</h3>
+              <h3 className="text-xl font-semibold mb-2">Flexible Rentals</h3>
               <p className="text-muted-foreground">
-                Choose from daily, weekly, or monthly rental options to suit your needs
+                Choose from daily, weekly, or monthly rental options to suit your needs.
               </p>
             </div>
-            <div className="flex flex-col gap-4 items-center text-center p-6">
-              <div className="bg-primary/10 p-3 rounded-full">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-                  />
-                </svg>
+            <div className="text-center">
+              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Calendar className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">Secure Payments</h3>
+              <h3 className="text-xl font-semibold mb-2">Easy Booking</h3>
               <p className="text-muted-foreground">
-                Integrated with Stripe for safe and reliable payment processing
+                Simple and quick booking process with instant confirmation.
               </p>
             </div>
-            <div className="flex flex-col gap-4 items-center text-center p-6">
-              <div className="bg-primary/10 p-3 rounded-full">
-                <svg
-                  className="w-6 h-6 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                  />
-                </svg>
+            <div className="text-center">
+              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <CreditCard className="h-6 w-6 text-primary" />
               </div>
-              <h3 className="text-xl font-semibold">ID Verification</h3>
+              <h3 className="text-xl font-semibold mb-2">Secure Payments</h3>
               <p className="text-muted-foreground">
-                Enhanced security with identity verification for all users
+                Safe and reliable payment processing for both owners and tenants.
+              </p>
+            </div>
+            <div className="text-center">
+              <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-6 w-6 text-primary" />
+              </div>
+              <h3 className="text-xl font-semibold mb-2">Verified Properties</h3>
+              <p className="text-muted-foreground">
+                All properties are verified to ensure quality and safety.
               </p>
             </div>
           </div>
