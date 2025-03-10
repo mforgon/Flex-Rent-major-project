@@ -1,20 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
-import * as z from "zod";
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
+import { useNavigation } from "@/lib/navigation";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import {
   Select,
   SelectContent,
@@ -22,139 +14,100 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
-import { supabase } from "@/lib/supabase/client";
-import type { FieldValues } from "react-hook-form";
-
-const formSchema = z.object({
-  email: z.string().email({
-    message: "Please enter a valid email address.",
-  }),
-  password: z.string().min(6, {
-    message: "Password must be at least 6 characters.",
-  }),
-  fullName: z.string().min(2, {
-    message: "Full name must be at least 2 characters.",
-  }),
-  role: z.enum(["owner", "tenant"], {
-    required_error: "Please select a role.",
-  }),
-});
-
-type FormValues = z.infer<typeof formSchema>;
 
 export function SignUpForm() {
-  const router = useRouter();
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [role, setRole] = useState<'owner' | 'tenant'>('tenant');
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
+  const { navigateToSignIn, navigateToDashboard } = useNavigation();
+  const supabase = createClientComponentClient();
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      fullName: "",
-      role: "tenant",
-    },
-  });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
 
-  async function onSubmit(values: FormValues) {
     try {
-      setIsLoading(true);
-      const { error: signUpError } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
         options: {
           data: {
-            full_name: values.fullName,
-            role: values.role,
+            role,
           },
         },
       });
 
-      if (signUpError) {
-        throw signUpError;
+      if (error) {
+        throw error;
       }
 
-      toast.success("Account created successfully! Please check your email to verify your account.");
-      router.push("/sign-in");
-    } catch (error: unknown ) {
-      toast.error("Something went wrong. Please try again.");
+      toast({
+        title: 'Success',
+        description: 'Your account has been created successfully.',
+      });
+
+      navigateToDashboard();
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
     } finally {
       setIsLoading(false);
     }
-  }
+  };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }: { field: FieldValues }) => (
-            <FormItem>
-              <FormLabel>Email</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter your email" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-2">
+        <Label htmlFor="email">Email</Label>
+        <Input
+          id="email"
+          type="email"
+          placeholder="name@example.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
         />
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }: { field: FieldValues }) => (
-            <FormItem>
-              <FormLabel>Password</FormLabel>
-              <FormControl>
-                <Input
-                  type="password"
-                  placeholder="Enter your password"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="password">Password</Label>
+        <Input
+          id="password"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
         />
-        <FormField
-          control={form.control}
-          name="fullName"
-          render={({ field }: { field: FieldValues }) => (
-            <FormItem>
-              <FormLabel>Full Name</FormLabel>
-              <FormControl>
-                <Input placeholder="Enter your full name" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="role"
-          render={({ field }: { field: FieldValues }) => (
-            <FormItem>
-              <FormLabel>Role</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="tenant">Tenant</SelectItem>
-                  <SelectItem value="owner">Property Owner</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" className="w-full" disabled={isLoading}>
-          {isLoading ? "Creating account..." : "Create account"}
-        </Button>
-      </form>
-    </Form>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="role">Role</Label>
+        <Select value={role} onValueChange={(value: 'owner' | 'tenant') => setRole(value)}>
+          <SelectTrigger>
+            <SelectValue placeholder="Select your role" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="tenant">Tenant</SelectItem>
+            <SelectItem value="owner">Property Owner</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? 'Creating account...' : 'Create account'}
+      </Button>
+      <div className="text-center text-sm">
+        Already have an account?{' '}
+        <button
+          type="button"
+          onClick={() => navigateToSignIn()}
+          className="text-primary hover:underline"
+        >
+          Sign in
+        </button>
+      </div>
+    </form>
   );
 } 

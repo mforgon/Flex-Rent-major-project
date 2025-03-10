@@ -7,7 +7,8 @@ import {
   integer,
   jsonb,
   decimal,
-  pgEnum
+  pgEnum,
+  numeric
 } from "drizzle-orm/pg-core";
 
 // Enums
@@ -35,18 +36,24 @@ export const users = pgTable("users", {
 // Properties table
 export const properties = pgTable("properties", {
   id: uuid("id").primaryKey().defaultRandom(),
-  ownerId: uuid("owner_id").references(() => users.id, { onDelete: "cascade" }).notNull(),
   name: text("name").notNull(),
-  description: text("description"),
+  description: text("description").notNull(),
   address: text("address").notNull(),
-  status: propertyStatusEnum("status").default("available"),
-  dailyRate: decimal("daily_rate", { precision: 10, scale: 2 }),
-  weeklyRate: decimal("weekly_rate", { precision: 10, scale: 2 }),
-  monthlyRate: decimal("monthly_rate", { precision: 10, scale: 2 }),
-  images: text("images").array(),
-  amenities: jsonb("amenities").$type<string[]>(),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
+  city: text("city").notNull(),
+  country: text("country").notNull(),
+  images: text("images").array().notNull(),
+  amenities: text("amenities").array().notNull(),
+  daily_rate: numeric("daily_rate").notNull(),
+  weekly_rate: numeric("weekly_rate").notNull(),
+  monthly_rate: numeric("monthly_rate").notNull(),
+  status: text("status").notNull().default("available"),
+  owner_id: uuid("owner_id").notNull().references(() => users.id),
+  property_type: text("property_type").notNull(),
+  bedrooms: integer("bedrooms").notNull(),
+  bathrooms: integer("bathrooms").notNull(),
+  square_meters: integer("square_meters").notNull(),
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
 });
 
 // Rentals table
@@ -82,6 +89,7 @@ export const reviews = pgTable("reviews", {
   id: uuid("id").primaryKey().defaultRandom(),
   propertyId: uuid("property_id").references(() => properties.id).notNull(),
   tenantId: uuid("tenant_id").references(() => users.id).notNull(),
+  booking_id: uuid("booking_id").notNull().references(() => bookings.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
   createdAt: timestamp("created_at").defaultNow(),
@@ -98,4 +106,31 @@ export const expenses = pgTable("expenses", {
   category: text("category").notNull(), // maintenance, utilities, etc.
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Bookings table
+export const bookings = pgTable("bookings", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  property_id: uuid("property_id").references(() => properties.id).notNull(),
+  tenant_id: uuid("tenant_id").references(() => users.id).notNull(),
+  start_date: timestamp("start_date").notNull(),
+  end_date: timestamp("end_date").notNull(),
+  duration: text("duration").notNull(), // 'daily', 'weekly', 'monthly'
+  total_amount: numeric("total_amount").notNull(),
+  status: text("status").notNull().default("pending"), // 'pending', 'confirmed', 'cancelled', 'completed'
+  payment_status: text("payment_status").notNull().default("pending"), // 'pending', 'paid', 'refunded'
+  created_at: timestamp("created_at").defaultNow().notNull(),
+  updated_at: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Property Analytics table
+export const propertyAnalytics = pgTable("property_analytics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  property_id: uuid("property_id").references(() => properties.id).notNull(),
+  total_bookings: integer("total_bookings").notNull().default(0),
+  total_revenue: numeric("total_revenue").notNull().default('0'),
+  occupancy_rate: numeric("occupancy_rate").notNull().default('0'),
+  average_rating: numeric("average_rating"),
+  monthly_stats: jsonb("monthly_stats").notNull().default("{}"),
+  last_updated: timestamp("last_updated").defaultNow().notNull(),
 }); 
