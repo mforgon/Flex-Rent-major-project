@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2025-02-24.acacia',
 });
 
 export async function POST(request: Request) {
@@ -20,10 +20,10 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { propertyId, amount, startDate, endDate, duration, paymentMethod } = body;
+    const { propertyId, amount, startDate, endDate, duration, paymentMethodData } = body;
 
     // Get the property details
-    const { data: property, error: propertyError } = await supabase
+    const { error: propertyError } = await supabase
       .from('properties')
       .select('*')
       .eq('id', propertyId)
@@ -89,10 +89,10 @@ export async function POST(request: Request) {
     const paymentMethod = await stripe.paymentMethods.create({
       type: 'card',
       card: {
-        number: paymentMethod.cardNumber,
-        exp_month: parseInt(paymentMethod.expiry.split('/')[0]),
-        exp_year: parseInt(paymentMethod.expiry.split('/')[1]),
-        cvc: paymentMethod.cvc,
+        number: paymentMethodData.cardNumber,
+        exp_month: parseInt(paymentMethodData.expiry.split('/')[0]),
+        exp_year: parseInt(paymentMethodData.expiry.split('/')[1]),
+        cvc: paymentMethodData.cvc,
       },
       billing_details: {
         email: session.user.email,

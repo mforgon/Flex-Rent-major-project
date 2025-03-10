@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useNavigation } from "@/lib/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
+import { AuthError } from "@supabase/supabase-js";
 import {
   Select,
   SelectContent,
@@ -21,7 +22,7 @@ export function SignUpForm() {
   const [role, setRole] = useState<'owner' | 'tenant'>('tenant');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { navigateToSignIn, navigateToDashboard } = useNavigation();
+  const router = useRouter();
   const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,11 +49,12 @@ export function SignUpForm() {
         description: 'Your account has been created successfully.',
       });
 
-      navigateToDashboard();
-    } catch (error) {
+      router.push("/dashboard");
+    } catch (error: unknown) {
+      const authError = error as AuthError;
       toast({
         title: 'Error',
-        description: 'Something went wrong. Please try again.',
+        description: authError.message || 'Something went wrong. Please try again.',
         variant: 'destructive',
       });
     } finally {
@@ -102,7 +104,7 @@ export function SignUpForm() {
         Already have an account?{' '}
         <button
           type="button"
-          onClick={() => navigateToSignIn()}
+          onClick={() => router.push("/sign-in")}
           className="text-primary hover:underline"
         >
           Sign in

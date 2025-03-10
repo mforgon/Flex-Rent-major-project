@@ -2,22 +2,18 @@
 
 import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useNavigation } from "@/lib/navigation";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
 
-interface SignInFormProps {
-  redirectedFrom?: string;
-}
-
-export function SignInForm({ redirectedFrom }: SignInFormProps) {
+export function SignInForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const { navigateToSignUp, navigateToDashboard } = useNavigation();
+  const router = useRouter();
   const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -39,8 +35,9 @@ export function SignInForm({ redirectedFrom }: SignInFormProps) {
         description: "You have been signed in successfully.",
       });
 
-      navigateToDashboard();
+      router.push("/dashboard");
     } catch (error) {
+      console.error("Sign in error:", error);
       toast({
         title: "Error",
         description: "Invalid email or password. Please try again.",
@@ -78,10 +75,10 @@ export function SignInForm({ redirectedFrom }: SignInFormProps) {
         {isLoading ? "Signing in..." : "Sign in"}
       </Button>
       <div className="text-center text-sm">
-        Don't have an account?{" "}
+        Don&apos;t have an account?{" "}
         <button
           type="button"
-          onClick={() => navigateToSignUp()}
+          onClick={() => router.push("/sign-up")}
           className="text-primary hover:underline"
         >
           Sign up

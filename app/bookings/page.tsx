@@ -1,41 +1,10 @@
-import { useEffect, useState } from "react";
-import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
 import { formatCurrency } from "@/lib/format";
-import { toast } from "sonner";
-import { useNavigation } from "@/lib/navigation";
 import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-
-interface Property {
-  name: string;
-  description: string;
-  images: string[];
-}
-
-interface Booking {
-  id: string;
-  property: Property;
-  start_date: string;
-  end_date: string;
-  duration: "daily" | "weekly" | "monthly";
-  status: "pending" | "confirmed" | "cancelled" | "completed";
-  total_amount: number;
-}
-
-interface SupabaseBooking {
-  id: string;
-  property: Property[];
-  start_date: string;
-  end_date: string;
-  duration: "daily" | "weekly" | "monthly";
-  status: "pending" | "confirmed" | "cancelled" | "completed";
-  total_amount: number;
-}
 
 export default async function BookingsPage() {
   const supabase = createServerComponentClient({ cookies });

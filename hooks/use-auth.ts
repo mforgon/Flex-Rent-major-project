@@ -1,7 +1,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import type { User, AuthError, Session } from "@supabase/supabase-js";
+import type { User, Session } from "@supabase/supabase-js";
 
 export function useAuth() {
   const router = useRouter();
