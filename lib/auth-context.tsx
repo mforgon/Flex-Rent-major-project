@@ -8,10 +8,9 @@ import type { User } from '@supabase/supabase-js';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string, role: 'owner' | 'tenant') => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  isOwner: boolean;
+  isTenant: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,94 +22,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const supabase = createClientComponentClient();
 
   useEffect(() => {
-    // Check active sessions and sets the user
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        setUser(session.user);
-      }
+      setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for changes on auth state (logged in, signed out, etc.)
+    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setUser(session.user);
-      } else {
-        setUser(null);
-      }
+      setUser(session?.user ?? null);
       setLoading(false);
+      router.refresh();
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth]);
-
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    router.push('/dashboard');
-  };
-
-  const signUp = async (email: string, password: string, fullName: string, role: 'owner' | 'tenant') => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: fullName,
-          role,
-        },
-      },
-    });
-
-    if (error) {
-      throw error;
-    }
-
-    // After successful signup, sign in automatically
-    await signIn(email, password);
-  };
+  }, [router, supabase.auth]);
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      throw error;
-    }
-    router.push('/sign-in');
-  };
-
-  const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      throw error;
+    try {
+      await supabase.auth.signOut();
+      router.push('/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
     }
   };
 
-  return (
-    <AuthContext.Provider
-      value={{
-        user,
-        loading,
-        signIn,
-        signUp,
-        signOut,
-        resetPassword,
-      }}
-    >
-      {children}
-    </AuthContext.Provider>
-  );
+  const value = {
+    user,
+    loading,
+    signOut,
+    isOwner: user?.user_metadata?.role === 'owner',
+    isTenant: user?.user_metadata?.role === 'tenant',
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {
