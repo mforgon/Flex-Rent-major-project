@@ -38,7 +38,7 @@ export function PropertyDetails({ property }: PropertyDetailsProps) {
 
   const handleRentClick = () => {
     if (!user) {
-      router.push('/login?redirect=' + encodeURIComponent(`/properties/${property.id}`));
+      router.push('/sign-in?redirect=' + encodeURIComponent(`/properties/${property.id}`));
       return;
     }
     // Handle rental process for authenticated users

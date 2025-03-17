@@ -1,23 +1,28 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
+import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
+import { cookies } from 'next/headers';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2025-02-24.acacia',
 });
 
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
   try {
-    const body = await request.text();
-    const signature = request.headers.get('stripe-signature')!;
+    const body = await req.text();
+    const signature = headers().get('stripe-signature')!;
 
     let event: Stripe.Event;
 
     try {
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = stripe.webhooks.constructEvent(
+        body,
+        signature,
+        webhookSecret
+      );
     } catch (err) {
       console.error('Webhook signature verification failed:', err);
       return new NextResponse('Webhook signature verification failed', { status: 400 });
@@ -26,107 +31,104 @@ export async function POST(request: Request) {
     const supabase = createRouteHandlerClient({ cookies });
 
     switch (event.type) {
-      case 'customer.subscription.created':
-      case 'customer.subscription.updated': {
-        const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
+        
+        // Handle subscription payment
+        if (session.mode === 'subscription') {
+          const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
+          
+          await supabase
+            .from('subscriptions')
+            .upsert({
+              user_id: session.metadata?.user_id || session.client_reference_id,
+              stripe_subscription_id: subscription.id,
+              stripe_customer_id: subscription.customer as string,
+              stripe_price_id: subscription.items.data[0].price.id,
+              status: subscription.status,
+              current_period_end: new Date(subscription.current_period_end * 1000),
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              is_premium: true,
+            });
 
-        // Get the user ID from the customer metadata
-        const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata.user_id;
+          // Update user's premium status
+          await supabase
+            .from('users')
+            .update({ is_premium: true })
+            .eq('id', session.metadata?.user_id || session.client_reference_id);
+        }
+        // Handle one-time payment for property rental
+        else if (session.mode === 'payment') {
+          await supabase
+            .from('rental_payments')
+            .insert({
+              property_id: session.metadata?.propertyId,
+              user_id: session.metadata?.userId,
+              amount: session.amount_total! / 100,
+              status: 'completed',
+              start_date: session.metadata?.startDate,
+              end_date: session.metadata?.endDate,
+              stripe_payment_id: session.payment_intent as string,
+            });
 
-        // Update the subscription in the database
-        const { error: subscriptionError } = await supabase
-          .from('subscriptions')
-          .upsert({
-            user_id: userId,
-            stripe_subscription_id: subscription.id,
-            stripe_customer_id: customerId,
-            stripe_price_id: subscription.items.data[0].price.id,
-            status: subscription.status,
-            current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-            cancel_at_period_end: subscription.cancel_at_period_end,
-          });
-
-        if (subscriptionError) {
-          console.error('Error updating subscription:', subscriptionError);
-          return new NextResponse('Internal Server Error', { status: 500 });
+          // Update property status to rented
+          await supabase
+            .from('properties')
+            .update({ status: 'rented' })
+            .eq('id', session.metadata?.propertyId);
         }
         break;
       }
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
-
-        // Get the user ID from the customer metadata
-        const customer = await stripe.customers.retrieve(customerId);
-        const userId = customer.metadata.user_id;
-
-        // Delete the subscription from the database
-        const { error: deleteError } = await supabase
+        
+        // Update subscription status
+        await supabase
           .from('subscriptions')
-          .delete()
-          .eq('user_id', userId);
+          .update({
+            status: subscription.status,
+            current_period_end: new Date(subscription.current_period_end * 1000),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            is_premium: false,
+          })
+          .eq('stripe_subscription_id', subscription.id);
 
-        if (deleteError) {
-          console.error('Error deleting subscription:', deleteError);
-          return new NextResponse('Internal Server Error', { status: 500 });
+        // Update user's premium status
+        const { data: sub } = await supabase
+          .from('subscriptions')
+          .select('user_id')
+          .eq('stripe_subscription_id', subscription.id)
+          .single();
+
+        if (sub) {
+          await supabase
+            .from('users')
+            .update({ is_premium: false })
+            .eq('id', sub.user_id);
         }
         break;
       }
 
-      case 'payment_intent.succeeded': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const { property_id, start_date, end_date, duration } = paymentIntent.metadata;
-
-        // Update the rental record in the database
-        const { error: rentalError } = await supabase
-          .from('rentals')
-          .update({
-            is_paid: true,
-            stripe_payment_intent_id: paymentIntent.id,
-          })
-          .eq('property_id', property_id)
-          .eq('start_date', start_date)
-          .eq('end_date', end_date)
-          .eq('duration', duration);
-
-        if (rentalError) {
-          console.error('Error updating rental:', rentalError);
-          return new NextResponse('Internal Server Error', { status: 500 });
-        }
-        break;
-      }
-
-      case 'payment_intent.payment_failed': {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const { property_id, start_date, end_date, duration } = paymentIntent.metadata;
-
-        // Update the rental record in the database
-        const { error: rentalError } = await supabase
-          .from('rentals')
-          .update({
-            is_paid: false,
-            stripe_payment_intent_id: paymentIntent.id,
-          })
-          .eq('property_id', property_id)
-          .eq('start_date', start_date)
-          .eq('end_date', end_date)
-          .eq('duration', duration);
-
-        if (rentalError) {
-          console.error('Error updating rental:', rentalError);
-          return new NextResponse('Internal Server Error', { status: 500 });
-        }
+      case 'customer.subscription.updated': {
+        const subscription = event.data.object as Stripe.Subscription;
+        
+        await supabase
+          .from('subscriptions')
+          .upsert({
+            stripe_subscription_id: subscription.id,
+            status: subscription.status,
+            current_period_end: new Date(subscription.current_period_end * 1000),
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            is_premium: subscription.status === 'active',
+          });
         break;
       }
     }
 
-    return NextResponse.json({ received: true });
+    return new NextResponse('Webhook processed successfully', { status: 200 });
   } catch (error) {
-    console.error('Error in webhook handler:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Error processing webhook:', error);
+    return new NextResponse('Webhook error', { status: 500 });
   }
 } 

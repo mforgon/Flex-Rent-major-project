@@ -1,6 +1,7 @@
 import { User } from '@supabase/supabase-js';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,8 +52,13 @@ export function DashboardHeader({ title, subtitle, user }: DashboardHeaderProps)
               <Link href="/settings">Settings</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/sign-out">Sign out</Link>
+            <DropdownMenuItem>
+              <form action="/auth/sign-out" method="post" className="w-full">
+                <button type="submit" className="w-full text-left flex items-center">
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Sign out
+                </button>
+              </form>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

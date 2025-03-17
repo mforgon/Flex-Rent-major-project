@@ -41,9 +41,9 @@ export default async function RootLayout({
                     <Link href={session.user.user_metadata.role === 'owner' ? '/dashboard/owner' : '/dashboard/tenant'}>
                       <Button variant="ghost">Dashboard</Button>
                     </Link>
-                    <Link href="/sign-out">
-                      <Button variant="outline">Sign Out</Button>
-                    </Link>
+                    <form action="/auth/sign-out" method="post">
+                      <Button variant="outline" type="submit">Sign Out</Button>
+                    </form>
                   </>
                 ) : (
                   <>

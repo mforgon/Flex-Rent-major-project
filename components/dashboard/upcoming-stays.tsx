@@ -19,10 +19,10 @@ interface Stay {
 }
 
 interface UpcomingStaysProps {
-  stays: Stay[];
+  bookings: Stay[];
 }
 
-export function UpcomingStays({ stays }: UpcomingStaysProps) {
+export function UpcomingStays({ bookings = [] }: UpcomingStaysProps) {
   const getStatusColor = (status: Stay['status']) => {
     switch (status) {
       case 'confirmed':
@@ -38,7 +38,7 @@ export function UpcomingStays({ stays }: UpcomingStaysProps) {
     }
   };
 
-  if (stays.length === 0) {
+  if (!bookings || bookings.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground">No upcoming stays</p>
@@ -48,7 +48,7 @@ export function UpcomingStays({ stays }: UpcomingStaysProps) {
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {stays.map((stay) => (
+      {bookings.map((stay) => (
         <Link key={stay.id} href={`/properties/${stay.properties.id}`}>
           <Card className="overflow-hidden hover:shadow-lg transition-shadow">
             <div className="aspect-video relative">

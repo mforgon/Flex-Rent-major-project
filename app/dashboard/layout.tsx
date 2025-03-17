@@ -2,8 +2,7 @@ import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Building2, Calendar, CreditCard, Home, Settings, User } from 'lucide-react';
+import { Building2, Calendar, CreditCard, Home, Settings } from 'lucide-react';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -33,7 +32,6 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         { name: 'Overview', href: '/dashboard/tenant', icon: Home },
         { name: 'My Bookings', href: '/dashboard/tenant/bookings', icon: Calendar },
         { name: 'Payments', href: '/dashboard/tenant/payments', icon: CreditCard },
-        { name: 'Profile', href: '/dashboard/tenant/profile', icon: User },
         { name: 'Settings', href: '/dashboard/tenant/settings', icon: Settings },
       ];
 

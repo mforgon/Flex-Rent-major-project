@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ export function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClientComponentClient();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -35,7 +36,9 @@ export function SignInForm() {
         description: "You have been signed in successfully.",
       });
 
-      router.push("/dashboard");
+      // Get the redirect URL from query parameters, default to dashboard if not provided
+      const redirectTo = searchParams.get('redirect') || '/dashboard';
+      router.push(redirectTo);
     } catch (error) {
       console.error("Sign in error:", error);
       toast({
