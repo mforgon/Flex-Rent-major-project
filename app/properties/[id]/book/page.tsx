@@ -1,14 +1,32 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
-import { PostgrestError } from '@supabase/supabase-js';
-import { Button } from '@/components/ui/button';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import type { Appearance } from '@stripe/stripe-js';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
+import { PaymentForm } from '@/components/payment/PaymentForm';
+
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
+
+// Stripe appearance options
+const appearance: Appearance = {
+  theme: 'stripe' as const,
+  variables: {
+    colorPrimary: '#0F172A',
+    colorBackground: '#ffffff',
+    colorText: '#1e293b',
+    colorDanger: '#ef4444',
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    spacingUnit: '4px',
+    borderRadius: '8px',
+  },
+};
 
 interface Property {
   id: string;
@@ -25,8 +43,7 @@ interface RentalOption {
 
 export default function BookingPage({ params }: { params: { id: string } }) {
   const [selectedDuration, setSelectedDuration] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const router = useRouter();
+  const [clientSecret, setClientSecret] = useState<string>('');
   const { toast } = useToast();
   const supabase = createClientComponentClient();
 
@@ -56,6 +73,42 @@ export default function BookingPage({ params }: { params: { id: string } }) {
     fetchProperty();
   }, [params.id, supabase, toast]);
 
+  const handleDurationSelect = async (duration: string) => {
+    setSelectedDuration(duration);
+    if (!property) return;
+
+    const option = rentalOptions.find((opt) => opt.duration === duration);
+    if (!option) return;
+
+    try {
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: option.rate,
+          duration_type: duration,
+          property_id: property.id,
+        }),
+      });
+
+      const data = await response.json();
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      setClientSecret(data.clientSecret);
+    } catch (error: unknown) {
+      console.error('Payment initialization error:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to initialize payment',
+        variant: 'destructive',
+      });
+    }
+  };
+
   if (!property) {
     return <div>Loading...</div>;
   }
@@ -66,39 +119,10 @@ export default function BookingPage({ params }: { params: { id: string } }) {
     { duration: 'monthly', rate: property.monthly_rate, label: 'Monthly Rate' },
   ];
 
-  const handlePayment = async () => {
-    setIsLoading(true);
-    try {
-      // Here you would integrate with your payment provider (e.g., Stripe)
-      // For now, we'll just create a booking record
-      const { error } = await supabase.from('bookings').insert({
-        property_id: params.id,
-        tenant_id: (await supabase.auth.getUser()).data.user?.id,
-        duration_type: selectedDuration,
-        status: 'pending',
-        amount: rentalOptions.find(opt => opt.duration === selectedDuration)?.rate,
-        created_at: new Date().toISOString(),
-      });
-
-      if (error) throw error;
-
-      toast({
-        title: 'Success',
-        description: 'Booking created successfully!',
-      });
-
-      // Redirect to the bookings page or confirmation page
-      router.push('/dashboard/tenant/bookings');
-    } catch (error) {
-      const pgError = error as PostgrestError;
-      toast({
-        title: 'Error',
-        description: pgError.message || 'Failed to create booking',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+  const stripeOptions = {
+    clientSecret,
+    appearance,
+    loader: 'auto' as const,
   };
 
   return (
@@ -111,7 +135,7 @@ export default function BookingPage({ params }: { params: { id: string } }) {
           <div className="space-y-6">
             <RadioGroup
               value={selectedDuration}
-              onValueChange={setSelectedDuration}
+              onValueChange={handleDurationSelect}
               className="space-y-4"
             >
               {rentalOptions.map((option) => (
@@ -127,13 +151,15 @@ export default function BookingPage({ params }: { params: { id: string } }) {
               ))}
             </RadioGroup>
 
-            <Button
-              onClick={handlePayment}
-              disabled={!selectedDuration || isLoading}
-              className="w-full"
-            >
-              {isLoading ? 'Processing...' : 'Proceed to Payment'}
-            </Button>
+            {clientSecret && (
+              <Elements stripe={stripePromise} options={stripeOptions}>
+                <PaymentForm
+                  propertyId={params.id}
+                  durationType={selectedDuration}
+                  amount={rentalOptions.find(opt => opt.duration === selectedDuration)?.rate || 0}
+                />
+              </Elements>
+            )}
           </div>
         </CardContent>
       </Card>

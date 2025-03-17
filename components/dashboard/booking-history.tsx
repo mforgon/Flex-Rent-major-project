@@ -11,8 +11,8 @@ import {
 
 interface Booking {
   id: string;
-  check_in_date: string;
-  check_out_date: string;
+  start_date: string;
+  end_date: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   total_amount: number;
   properties: {
@@ -38,6 +38,15 @@ export function BookingHistory({ bookings }: BookingHistoryProps) {
         return 'destructive';
       default:
         return 'outline';
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM d, yyyy');
+    } catch {
+      console.error('Invalid date:', dateString);
+      return 'Invalid date';
     }
   };
 
@@ -69,10 +78,10 @@ export function BookingHistory({ bookings }: BookingHistoryProps) {
               {booking.properties.address}
             </TableCell>
             <TableCell>
-              {format(new Date(booking.check_in_date), 'MMM d, yyyy')}
+              {formatDate(booking.start_date)}
             </TableCell>
             <TableCell>
-              {format(new Date(booking.check_out_date), 'MMM d, yyyy')}
+              {formatDate(booking.end_date)}
             </TableCell>
             <TableCell>${booking.total_amount.toFixed(2)}</TableCell>
             <TableCell>
