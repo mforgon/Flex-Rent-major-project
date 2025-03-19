@@ -12,16 +12,53 @@ export default async function BookingsPage() {
     redirect('/sign-in');
   }
 
-  // Fetch owner's bookings
+  // First get all properties owned by this user
+  const { data: properties } = await supabase
+    .from('properties')
+    .select('id')
+    .eq('owner_id', session.user.id);
+
+  if (!properties?.length) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold">Bookings</h1>
+          <p className="text-muted-foreground">
+            You don't have any properties listed yet.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Then fetch bookings for all properties owned by this user
   const { data: bookings } = await supabase
     .from('bookings')
     .select(`
       *,
-      properties (name),
-      tenants (full_name, email)
+      properties (
+        id,
+        name,
+        daily_rate,
+        weekly_rate,
+        monthly_rate
+      ),
+      profiles:user_id (
+        full_name,
+        email
+      )
     `)
-    .eq('property_owner_id', session.user.id)
+    .in('property_id', properties.map(p => p.id))
     .order('created_at', { ascending: false });
+
+  // Transform the data to match the expected format
+  const transformedBookings = bookings?.map(booking => ({
+    ...booking,
+    tenants: {
+      full_name: booking.profiles.full_name,
+      email: booking.profiles.email
+    }
+  })) || [];
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -33,7 +70,10 @@ export default async function BookingsPage() {
       </div>
 
       <div className="bg-card rounded-lg shadow-sm">
-        <RecentBookings bookings={bookings || []} />
+        <RecentBookings 
+          bookings={transformedBookings} 
+          isOwner={true}
+        />
       </div>
     </div>
   );

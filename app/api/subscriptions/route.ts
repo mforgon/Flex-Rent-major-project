@@ -11,39 +11,32 @@ import {
 import type { CreateSubscriptionParams } from '@/lib/stripe/types';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16',
+  apiVersion: '2025-02-24.acacia',
 });
 
 export async function POST(request: Request) {
   try {
     const supabase = createRouteHandlerClient({ cookies });
-
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
+    
+    // Get user session
+    const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      return new NextResponse('Unauthorized', { status: 401 });
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
     }
 
-    const body = await request.json();
-    const { planId } = body;
-
-    // Get the user's Stripe customer ID from the database
-    const { data: user, error: userError } = await supabase
-      .from('users')
-      .select('stripe_customer_id')
+    // Get user profile to check if they already have a subscription
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('stripe_customer_id, subscription_status')
       .eq('id', session.user.id)
       .single();
 
-    if (userError) {
-      console.error('Error fetching user:', userError);
-      return new NextResponse('Internal Server Error', { status: 500 });
-    }
+    let customerId = profile?.stripe_customer_id;
 
-    let customerId = user.stripe_customer_id;
-
-    // If the user doesn't have a Stripe customer ID, create one
+    // If user doesn't have a Stripe customer ID, create one
     if (!customerId) {
       const customer = await stripe.customers.create({
         email: session.user.email,
@@ -51,43 +44,46 @@ export async function POST(request: Request) {
           user_id: session.user.id,
         },
       });
-
       customerId = customer.id;
 
-      // Update the user with their Stripe customer ID
-      const { error: updateError } = await supabase
-        .from('users')
+      // Save Stripe customer ID to user profile
+      await supabase
+        .from('profiles')
         .update({ stripe_customer_id: customerId })
         .eq('id', session.user.id);
-
-      if (updateError) {
-        console.error('Error updating user:', updateError);
-        return new NextResponse('Internal Server Error', { status: 500 });
-      }
     }
 
-    // Create a Stripe checkout session
-    const session = await stripe.checkout.sessions.create({
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+
+    // Create a Stripe Checkout session
+    const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
+      mode: 'subscription',
       payment_method_types: ['card'],
       line_items: [
         {
-          price: planId,
+          price: process.env.NEXT_PUBLIC_STRIPE_PREMIUM_PRICE_ID,
           quantity: 1,
         },
       ],
-      mode: 'subscription',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?canceled=true`,
+      success_url: `${baseUrl}/dashboard/owner/subscription?success=true`,
+      cancel_url: `${baseUrl}/dashboard/owner/subscription?success=false`,
       metadata: {
         user_id: session.user.id,
       },
     });
 
-    return NextResponse.json({ url: session.url });
+    if (!checkoutSession.url) {
+      throw new Error('Failed to create checkout session');
+    }
+
+    return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
-    console.error('Error in subscriptions route:', error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('Subscription error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
 

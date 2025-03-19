@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Building2, Calendar, CreditCard, Plus, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { formatCurrency } from '@/lib/format';
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 export default async function OwnerDashboard() {
   const supabase = createServerComponentClient({ cookies });
@@ -76,6 +78,24 @@ export default async function OwnerDashboard() {
     .eq('user_id', session.user.id)
     .single();
 
+  // Get user's subscription status and property count
+  const [{ data: profile }, { count }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('subscription_status')
+      .eq('id', session.user.id)
+      .single(),
+    supabase
+      .from('properties')
+      .select('*', { count: true })
+      .eq('owner_id', session.user.id)
+  ]);
+
+  const isPremium = profile?.subscription_status === 'active';
+  const propertyCount = count || 0;
+  const isApproachingLimit = !isPremium && propertyCount >= 2;
+  const hasReachedLimit = !isPremium && propertyCount >= 3;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <DashboardHeader
@@ -83,6 +103,60 @@ export default async function OwnerDashboard() {
         subtitle="Manage your properties and view insights"
         user={session.user}
       />
+
+      {/* Subscription Status */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between bg-card p-4 rounded-lg border">
+          <div>
+            <h2 className="font-semibold">Current Plan: {isPremium ? 'Premium' : 'Free'}</h2>
+            <p className="text-sm text-muted-foreground">
+              {isPremium 
+                ? 'You have access to all premium features' 
+                : `You can manage up to 3 properties (${propertyCount}/3 used)`}
+            </p>
+          </div>
+          {!isPremium && (
+            <Link href="/dashboard/owner/subscription">
+              <Button>Upgrade to Premium</Button>
+            </Link>
+          )}
+        </div>
+      </div>
+
+      {/* Property Limit Alerts */}
+      {hasReachedLimit && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Property Limit Reached</AlertTitle>
+          <AlertDescription>
+            You've reached the maximum of 3 properties on the Free plan. Upgrade to Premium to add more properties.
+            <div className="mt-2">
+              <Link href="/dashboard/owner/subscription">
+                <Button variant="outline" size="sm">
+                  Upgrade Now
+                </Button>
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {isApproachingLimit && !hasReachedLimit && (
+        <Alert className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Approaching Property Limit</AlertTitle>
+          <AlertDescription>
+            You have {propertyCount} out of 3 properties listed. Consider upgrading to Premium for unlimited properties.
+            <div className="mt-2">
+              <Link href="/dashboard/owner/subscription">
+                <Button variant="outline" size="sm">
+                  View Plans
+                </Button>
+              </Link>
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-8">
         <Card>

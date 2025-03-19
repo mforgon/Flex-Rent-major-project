@@ -1,13 +1,11 @@
-import Image from 'next/image';
-import Link from 'next/link';
 import { format } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 interface Stay {
   id: string;
-  check_in_date: string;
-  check_out_date: string;
+  start_date: string;
+  end_date: string;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   total_amount: number;
   properties: {
@@ -19,10 +17,10 @@ interface Stay {
 }
 
 interface UpcomingStaysProps {
-  bookings: Stay[];
+  stays?: Stay[];
 }
 
-export function UpcomingStays({ bookings = [] }: UpcomingStaysProps) {
+export function UpcomingStays({ stays = [] }: UpcomingStaysProps) {
   const getStatusColor = (status: Stay['status']) => {
     switch (status) {
       case 'confirmed':
@@ -38,60 +36,69 @@ export function UpcomingStays({ bookings = [] }: UpcomingStaysProps) {
     }
   };
 
-  if (!bookings || bookings.length === 0) {
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'MMM d, yyyy');
+    } catch {
+      console.error('Invalid date:', dateString);
+      return 'Invalid date';
+    }
+  };
+
+  if (!stays || stays.length === 0) {
     return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No upcoming stays</p>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Upcoming Stays</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No upcoming stays</p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {bookings.map((stay) => (
-        <Link key={stay.id} href={`/properties/${stay.properties.id}`}>
-          <Card className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="aspect-video relative">
-              <Image
-                src={stay.properties.images[0] || "/placeholder-property.jpg"}
-                alt={stay.properties.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-              />
+    <Card>
+      <CardHeader>
+        <CardTitle>Upcoming Stays</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {stays.map((stay) => (
+          <div key={stay.id} className="space-y-2">
+            <div className="flex items-start justify-between">
+              <div>
+                <h3 className="font-medium">{stay.properties.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {stay.properties.address}
+                </p>
+              </div>
+              <Badge variant={getStatusColor(stay.status)}>
+                {stay.status}
+              </Badge>
             </div>
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div>
-                  <CardTitle className="line-clamp-1">{stay.properties.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground line-clamp-1">
-                    {stay.properties.address}
-                  </p>
-                </div>
-                <Badge variant={getStatusColor(stay.status)}>
-                  {stay.status}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span>Check In:</span>
-                  <span>{format(new Date(stay.check_in_date), 'MMM d, yyyy')}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>Check Out:</span>
-                  <span>{format(new Date(stay.check_out_date), 'MMM d, yyyy')}</span>
-                </div>
-                <div className="flex justify-between text-sm font-medium">
-                  <span>Total Amount:</span>
-                  <span>${stay.total_amount.toFixed(2)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-      ))}
-    </div>
+            <div className="flex justify-between text-sm">
+              <span>Check In:</span>
+              <span>{formatDate(stay.start_date)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span>Check Out:</span>
+              <span>{formatDate(stay.end_date)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-medium">
+              <span>Total:</span>
+              <span>${stay.total_amount.toFixed(2)}</span>
+            </div>
+            {stay.properties.images && stay.properties.images.length > 0 && (
+              <img
+                src={stay.properties.images[0]}
+                alt={stay.properties.name}
+                className="w-full h-32 object-cover rounded-md"
+              />
+            )}
+          </div>
+        ))}
+      </CardContent>
+    </Card>
   );
 } 
